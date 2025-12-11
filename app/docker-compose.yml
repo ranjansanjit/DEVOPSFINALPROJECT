@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8
+    container_name: skr_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: skr_bdaybot
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+    container_name: skr_backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: skr_bdaybot
+      DB_PORT: 3306
+      PORT: 5000
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: ../frontend
+    container_name: skr_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"   # <-- FIXED HERE
+
+volumes:
+  mysql_data:
