@@ -21,7 +21,7 @@ pipeline {
             steps {
                 dir('app/backend') {
                     script {
-                        sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG} ."
+                        sh "sudo docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG} ."
                     }
                 }
             }
@@ -31,7 +31,7 @@ pipeline {
             steps {
                 dir('app/frontend') {
                     script {
-                        sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} ."
+                        sh " sudo docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} ."
                     }
                 }
             }
