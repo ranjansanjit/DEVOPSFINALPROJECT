@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         REGISTRY_URL = 'harbor.registry.local'
-        IMAGE_NAME = 'skr-backend'
-        FRONTEND_IMAGE_NAME = 'skr-frontend'
+        IMAGE_NAME = 'backend'
+        FRONTEND_IMAGE_NAME = 'frontend'
         IMAGE_TAG = "v${BUILD_NUMBER}"
     }
 
@@ -12,7 +12,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: "https://github.com/ranjansanjit/SKR_BdayBot_Pro"
+                git branch: 'main', url: "https://github.com/ranjansanjit/DEVOPSFINALPROJECT"
             }
         }
 
@@ -35,10 +35,10 @@ pipeline {
 
     post {
         success {
-            echo "Build SUCCESS for SKR_BdayBot_Pro #${env.BUILD_NUMBER}"
+            echo "Build SUCCESS for DEVOPSFINALPROJECT #${env.BUILD_NUMBER}"
         }
         failure {
-            echo "Build FAILED for SKR_BdayBot_Pro #${env.BUILD_NUMBER}"
+            echo "Build FAILED for  #${env.BUILD_NUMBER}"
         }
     }
 }
