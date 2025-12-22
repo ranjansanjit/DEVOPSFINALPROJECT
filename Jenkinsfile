@@ -3,7 +3,8 @@ pipeline {
 
     environment {
         REGISTRY_URL = 'harbor.registry.local'
-        IMAGE_NAME = 'backend'
+        HARBOR_PROJECT = 'devopsfinalproject'
+        BACKEND_IMAGE_NAME = 'backend'
         FRONTEND_IMAGE_NAME = 'frontend'
         IMAGE_TAG = "v${BUILD_NUMBER}"
     }
@@ -19,16 +20,32 @@ pipeline {
         stage('Build Backend Image') {
             steps {
                 dir('app/backend') {
-                    sh """
-                        echo "Building Backend Docker Image..."
-                    """
+                    script {
+                        sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG} ."
+                    }
+                }
+            }
+        }
+
+        stage('Build Frontend Image') {
+            steps {
+                dir('app/frontend') {
+                    script {
+                        sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} ."
+                    }
                 }
             }
         }
 
         stage('Push Docker Images') {
             steps {
-                echo "Pushing Docker Images to ${REGISTRY_URL}..."
+                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                    script {
+                        sh "echo $HARBOR_PASS | docker login ${REGISTRY_URL} -u $HARBOR_USER --password-stdin"
+                        sh "docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+                        sh "docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+                    }
+                }
             }
         }
     }
@@ -38,8 +55,7 @@ pipeline {
             echo "Build SUCCESS for DEVOPSFINALPROJECT #${env.BUILD_NUMBER}"
         }
         failure {
-            echo "Build FAILED for  #${env.BUILD_NUMBER}"
+            echo "Build FAILED for DEVOPSFINALPROJECT #${env.BUILD_NUMBER}"
         }
     }
 }
-
