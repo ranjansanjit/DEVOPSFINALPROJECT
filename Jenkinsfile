@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         REGISTRY_URL = 'harbor.registry.local'
-        HARBOR_PROJECT = 'devopsfinalproject'
+        HARBOR_PROJECT = 'DEVOPSFINALPROJECT'
         BACKEND_IMAGE_NAME = 'backend'
         FRONTEND_IMAGE_NAME = 'frontend'
         IMAGE_TAG = "v${BUILD_NUMBER}"
@@ -21,7 +21,7 @@ pipeline {
             steps {
                 dir('app/backend') {
                     script {
-                        sh "sudo docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG} ."
+                        sh "sudo docker build -t ${REGISTRY_URL}/${skr}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG} ."
                     }
                 }
             }
@@ -31,7 +31,7 @@ pipeline {
             steps {
                 dir('app/frontend') {
                     script {
-                        sh " sudo docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} ."
+                        sh " sudo docker build -t ${REGISTRY_URL}/${skr}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} ."
                     }
                 }
             }
@@ -42,8 +42,8 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                     script {
                         sh "echo $HARBOR_PASS | docker login ${REGISTRY_URL} -u $HARBOR_USER --password-stdin"
-                        sh "docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
-                        sh "docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+                        sh "docker push ${REGISTRY_URL}/${skr}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+                        sh "docker push ${REGISTRY_URL}/${skr}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
                     }
                 }
             }
