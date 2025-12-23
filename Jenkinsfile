@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         REGISTRY_URL = 'harbor.registry.local'
-        HARBOR_PROJECT = 'DEVOPSFINALPROJECT'
+        HARBOR_PROJECT = 'skr'
         BACKEND_IMAGE_NAME = 'backend'
         FRONTEND_IMAGE_NAME = 'frontend'
         IMAGE_TAG = "v${BUILD_NUMBER}"
@@ -13,16 +13,16 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: "https://github.com/ranjansanjit/DEVOPSFINALPROJECT"
+                git branch: 'main', url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
             }
         }
 
         stage('Build Backend Image') {
             steps {
                 dir('app/backend') {
-                    script {
-                        sh "sudo docker build -t ${REGISTRY_URL}/${skr}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG} ."
-                    }
+                    sh """
+                        docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG} .
+                    """
                 }
             }
         }
@@ -30,21 +30,29 @@ pipeline {
         stage('Build Frontend Image') {
             steps {
                 dir('app/frontend') {
-                    script {
-                        sh " sudo docker build -t ${REGISTRY_URL}/${skr}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} ."
-                    }
+                    sh """
+                        docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} .
+                    """
                 }
             }
         }
 
-        stage('Push Docker Images') {
+        stage('Login & Push Docker Images') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
-                    script {
-                        sh "echo $HARBOR_PASS | docker login ${REGISTRY_URL} -u $HARBOR_USER --password-stdin"
-                        sh "docker push ${REGISTRY_URL}/${skr}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
-                        sh "docker push ${REGISTRY_URL}/${skr}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
-                    }
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'harbor-creds',
+                        usernameVariable: 'HARBOR_USER',
+                        passwordVariable: 'HARBOR_PASS'
+                    )
+                ]) {
+                    sh """
+                        echo "$HARBOR_PASS" | docker login ${REGISTRY_URL} \
+                        -u "$HARBOR_USER" --password-stdin
+
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                    """
                 }
             }
         }
@@ -52,10 +60,10 @@ pipeline {
 
     post {
         success {
-            echo "Build SUCCESS for DEVOPSFINALPROJECT #${env.BUILD_NUMBER}"
+            echo " Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
         failure {
-            echo "Build FAILED for DEVOPSFINALPROJECT #${env.BUILD_NUMBER}"
+            echo " Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
     }
 }
