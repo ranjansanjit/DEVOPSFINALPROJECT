@@ -3,8 +3,9 @@ pipeline {
 
     environment {
         REGISTRY_URL = 'harbor.registry.local'
-        IMAGE_NAME = 'skr-backend'
-        FRONTEND_IMAGE_NAME = 'skr-frontend'
+        HARBOR_PROJECT = 'skr'
+        BACKEND_IMAGE_NAME = 'backend'
+        FRONTEND_IMAGE_NAME = 'frontend'
         IMAGE_TAG = "v${BUILD_NUMBER}"
     }
 
@@ -12,7 +13,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: "https://github.com/ranjansanjit/SKR_BdayBot_Pro"
+                git branch: 'main', url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
             }
         }
 
@@ -20,26 +21,51 @@ pipeline {
             steps {
                 dir('app/backend') {
                     sh """
-                        echo "Building Backend Docker Image..."
+                        docker build -t ${REGISTRY_URL}/skr/${IMAGE_NAME}:latest .
+                        docker tag ${REGISTRY_URL}/skr/${IMAGE_NAME}:latest ${REGISTRY_URL}/skr/${IMAGE_NAME}:${IMAGE_TAG} 
                     """
                 }
             }
         }
 
-        stage('Push Docker Images') {
+        stage('Build Frontend Image') {
             steps {
-                echo "Pushing Docker Images to ${REGISTRY_URL}..."
+                dir('app/frontend') {
+                    sh """
+                        docker build -t ${REGISTRY_URL}/skr/${FRONTEND_IMAGE_NAME}:latest .
+                        docker tag ${REGISTRY_URL}/skr/${IMAGE_NAME}:latest ${REGISTRY_URL}/skr/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
+            }
+        }
+
+        stage('Login & Push Docker Images') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'harbor-creds',
+                        usernameVariable: 'HARBOR_USER',
+                        passwordVariable: 'HARBOR_PASS'
+                    )
+                ]) {
+                    sh """
+                        echo "$HARBOR_PASS" | docker login ${REGISTRY_URL} \
+                        -u "$HARBOR_USER" --password-stdin
+
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
             }
         }
     }
 
     post {
         success {
-            echo "Build SUCCESS for SKR_BdayBot_Pro #${env.BUILD_NUMBER}"
+            echo " Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
         failure {
-            echo "Build FAILED for SKR_BdayBot_Pro #${env.BUILD_NUMBER}"
+            echo " Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
     }
 }
-
