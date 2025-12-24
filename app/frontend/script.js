@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000/contacts";
+const API_URL = "http://192.168.56.19:5000/contacts";
 
 // Load contacts
 $(document).ready(function () {

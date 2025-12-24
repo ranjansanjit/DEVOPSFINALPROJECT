@@ -13,14 +13,14 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   backend:
-    image: harbor.registry.local/skr/backend:v30 # pull from Harbor
+    image: harbor.registry.local/skr/backend:latest # pull from Harbor
     depends_on:
       - db
     ports:
       - "5000:5000"
 
   frontend:
-    image: harbor.registry.local/skr/frontend:v30 # pull from Harbor
+    image: harbor.registry.local/skr/frontend:latest # pull from Harbor
     depends_on:
       - backend
     ports:
