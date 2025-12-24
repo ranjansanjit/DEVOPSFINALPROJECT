@@ -6,6 +6,9 @@ pipeline {
         HARBOR_PROJECT = 'skr'
         BACKEND_IMAGE_NAME = 'backend'
         FRONTEND_IMAGE_NAME = 'frontend'
+        HARBOR_PROJECT = 'skr'
+        BACKEND_IMAGE_NAME = 'backend'
+        FRONTEND_IMAGE_NAME = 'frontend'
         IMAGE_TAG = "v${BUILD_NUMBER}"
     }
 
@@ -13,6 +16,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
+                git branch: 'main', url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
                 git branch: 'main', url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
             }
         }
@@ -40,7 +44,23 @@ pipeline {
         }
 
         stage('Login & Push Docker Images') {
+        stage('Login & Push Docker Images') {
             steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'harbor-creds',
+                        usernameVariable: 'HARBOR_USER',
+                        passwordVariable: 'HARBOR_PASS'
+                    )
+                ]) {
+                    sh """
+                        echo "$HARBOR_PASS" | docker login ${REGISTRY_URL} \
+                        -u "$HARBOR_USER" --password-stdin
+
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'harbor-creds',
@@ -63,8 +83,10 @@ pipeline {
     post {
         success {
             echo " Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
+            echo " Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
         failure {
+            echo " Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
             echo " Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
     }
