@@ -2,22 +2,19 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY_URL = 'harbor.registry.local'
-        HARBOR_PROJECT = 'skr'
-        BACKEND_IMAGE_NAME = 'backend'
-        FRONTEND_IMAGE_NAME = 'frontend'
-        HARBOR_PROJECT = 'skr'
-        BACKEND_IMAGE_NAME = 'backend'
-        FRONTEND_IMAGE_NAME = 'frontend'
-        IMAGE_TAG = "v${BUILD_NUMBER}"
+        REGISTRY_URL         = 'harbor.registry.local'
+        HARBOR_PROJECT       = 'skr'
+        BACKEND_IMAGE_NAME   = 'backend'
+        FRONTEND_IMAGE_NAME  = 'frontend'
+        IMAGE_TAG            = "v${BUILD_NUMBER}"
     }
 
     stages {
 
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
-                git branch: 'main', url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
+                git branch: 'main',
+                    url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
             }
         }
 
@@ -25,8 +22,9 @@ pipeline {
             steps {
                 dir('app/backend') {
                     sh """
-                        docker build -t ${REGISTRY_URL}/skr/${IMAGE_NAME}:latest .
-                        docker tag ${REGISTRY_URL}/skr/${IMAGE_NAME}:latest ${REGISTRY_URL}/skr/${IMAGE_NAME}:${IMAGE_TAG} 
+                        docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
+                        docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest \
+                                   ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
                     """
                 }
             }
@@ -36,14 +34,14 @@ pipeline {
             steps {
                 dir('app/frontend') {
                     sh """
-                        docker build -t ${REGISTRY_URL}/skr/${FRONTEND_IMAGE_NAME}:latest .
-                        docker tag ${REGISTRY_URL}/skr/${IMAGE_NAME}:latest ${REGISTRY_URL}/skr/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                        docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
+                        docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest \
+                                   ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
                     """
                 }
             }
         }
 
-        stage('Login & Push Docker Images') {
         stage('Login & Push Docker Images') {
             steps {
                 withCredentials([
@@ -54,23 +52,8 @@ pipeline {
                     )
                 ]) {
                     sh """
-                        echo "$HARBOR_PASS" | docker login ${REGISTRY_URL} \
-                        -u "$HARBOR_USER" --password-stdin
-
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
-                    """
-                }
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'harbor-creds',
-                        usernameVariable: 'HARBOR_USER',
-                        passwordVariable: 'HARBOR_PASS'
-                    )
-                ]) {
-                    sh """
-                        echo "$HARBOR_PASS" | docker login ${REGISTRY_URL} \
-                        -u "$HARBOR_USER" --password-stdin
+                        echo "\$HARBOR_PASS" | docker login ${REGISTRY_URL} \
+                        -u "\$HARBOR_USER" --password-stdin
 
                         docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
                         docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
@@ -83,12 +66,9 @@ pipeline {
     post {
         success {
             echo " Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
-            echo " Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
         failure {
             echo " Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
-            echo " Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
     }
-}
 }
