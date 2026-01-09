@@ -18,6 +18,21 @@ pipeline {
             }
         }
 
+        //  SONARQUBE STAGE
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                      sonar-scanner \
+                      -Dsonar.projectKey=DEVOPSFINALPROJECT \
+                      -Dsonar.projectName=DEVOPSFINALPROJECT \
+                      -Dsonar.sources=app \
+                      -Dsonar.host.url=http://192.168.56.22:9000
+                    '''
+                }
+            }
+        }
+
         stage('Build Backend Image') {
             steps {
                 dir('app/backend') {
