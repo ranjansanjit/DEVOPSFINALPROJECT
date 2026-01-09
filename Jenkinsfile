@@ -27,7 +27,9 @@ pipeline {
                       -Dsonar.projectKey=DEVOPSFINALPROJECT \
                       -Dsonar.projectName=DEVOPSFINALPROJECT \
                       -Dsonar.language=app/backend \
-                      -Dsonar.host.url=http://192.168.56.22:9000
+                      -Dsonar.host.url=http://192.168.56.22:9000 \
+                      -Dsonar.login=sqb_5bfb39c57ea06209c550ed57b868185c23a1f462
+
                     '''
                 }
             }
