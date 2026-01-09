@@ -26,7 +26,7 @@ pipeline {
                       sonar-scanner \
                       -Dsonar.projectKey=DEVOPSFINALPROJECT \
                       -Dsonar.projectName=DEVOPSFINALPROJECT \
-                      -Dsonar.sources=app \
+                      -Dsonar.language=app/backend \
                       -Dsonar.host.url=http://192.168.56.22:9000
                     '''
                 }
