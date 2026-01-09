@@ -20,10 +20,10 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // 1. Ensure 'SonarScanner' is the EXACT name in Manage Jenkins -> Tools
+                    // This must match the 'Name' you gave in Manage Jenkins -> Tools
                     def scannerHome = tool 'SonarScanner' 
                     
-                    // 2. Ensure 'SonarQubeServer' is the EXACT name in Manage Jenkins -> System
+                    // This must match the 'Name' you gave in Manage Jenkins -> System
                     withSonarQubeEnv('YourSonarServerName') {
                         sh "${scannerHome}/bin/sonar-scanner \
                         -Dsonar.projectKey=DEVOPSFINALPROJECT \
@@ -39,8 +39,8 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                // This waits for SonarQube to finish processing and fails if the code is 'bad'
                 timeout(time: 1, unit: 'HOURS') {
+                    // Only works if you configured the Webhook in SonarQube UI
                     waitForQualityGate abortPipeline: true
                 }
             }
