@@ -9,10 +9,9 @@ app.config.from_object(Config)
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 CORS(app)
-# 🔥 Step 1: Create DB if not exists
+
 create_database()
 
-# 🔥 Step 2: Create tables
 db.init_app(app)
 with app.app_context():
     db.create_all()
