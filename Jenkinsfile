@@ -10,7 +10,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
@@ -18,19 +17,31 @@ pipeline {
             }
         }
 
-        //  SONARQUBE STAGE
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                      sonar-scanner \
-                      -Dsonar.projectKey=DEVOPSFINALPROJECT \
-                      -Dsonar.projectName=DEVOPSFINALPROJECT \
-                      -Dsonar.language=app/backend \
-                      -Dsonar.host.url=http://192.168.56.22:9000 \
-                      -Dsonar.login=sqb_5bfb39c57ea06209c550ed57b868185c23a1f462
+                script {
+                    // 1. Ensure 'SonarScanner' is the EXACT name in Manage Jenkins -> Tools
+                    def scannerHome = tool 'SonarScanner' 
+                    
+                    // 2. Ensure 'SonarQubeServer' is the EXACT name in Manage Jenkins -> System
+                    withSonarQubeEnv('YourSonarServerName') {
+                        sh "${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=DEVOPSFINALPROJECT \
+                        -Dsonar.projectName=DEVOPSFINALPROJECT \
+                        -Dsonar.host.url=http://192.168.56.22:9000 \
+                        -Dsonar.login=sqb_5bfb39c57ea06209c550ed57b868185c23a1f462 \
+                        -Dsonar.sources=. \
+                        -Dsonar.java.binaries=."
+                    }
+                }
+            }
+        }
 
-                    '''
+        stage('Quality Gate') {
+            steps {
+                // This waits for SonarQube to finish processing and fails if the code is 'bad'
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -84,10 +95,10 @@ pipeline {
 
     post {
         success {
-            echo " Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
+            echo "Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
         failure {
-            echo " Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
+            echo "Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
     }
 }
