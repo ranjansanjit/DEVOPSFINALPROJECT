@@ -2,14 +2,15 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY_URL         = 'harbor.registry.local'
-        HARBOR_PROJECT       = 'skr'
-        BACKEND_IMAGE_NAME   = 'backend'
-        FRONTEND_IMAGE_NAME  = 'frontend'
-        IMAGE_TAG            = "v${BUILD_NUMBER}"
+        REGISTRY_URL        = 'harbor.registry.local'
+        HARBOR_PROJECT      = 'skr'
+        BACKEND_IMAGE_NAME  = 'backend'
+        FRONTEND_IMAGE_NAME = 'frontend'
+        IMAGE_TAG           = "v${BUILD_NUMBER}"
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
@@ -20,18 +21,18 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // This must match the 'Name' you gave in Manage Jenkins -> Tools
-                    def scannerHome = tool 'SonarScanner' 
-                    
-                    // This must match the 'Name' you gave in Manage Jenkins -> System
+                    // Must match: Manage Jenkins → Global Tool Configuration
+                    def scannerHome = tool 'SonarScanner'
+
+                    // Must match: Manage Jenkins → System → SonarQube servers
                     withSonarQubeEnv('SonarQube-Server') {
-                        sh "${scannerHome}/opt/sonar-scanner/bin/sonar-scanner
-                        -Dsonar.projectKey=DEVOPSFINALPROJECT \
-                        -Dsonar.projectName=DEVOPSFINALPROJECT \
-                        -Dsonar.host.url=http://192.168.56.22:9000 \
-                        -Dsonar.login=sqb_5bfb39c57ea06209c550ed57b868185c23a1f462 \
-                        -Dsonar.sources=. \
-                        -Dsonar.java.binaries=."
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=DEVOPSFINALPROJECT \
+                            -Dsonar.projectName=DEVOPSFINALPROJECT \
+                            -Dsonar.sources=. \
+                            -Dsonar.java.binaries=.
+                        """
                     }
                 }
             }
@@ -40,7 +41,6 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 timeout(time: 1, unit: 'HOURS') {
-                    // Only works if you configured the Webhook in SonarQube UI
                     waitForQualityGate abortPipeline: true
                 }
             }
