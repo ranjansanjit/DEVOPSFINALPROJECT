@@ -25,7 +25,7 @@ pipeline {
                     
                     // This must match the 'Name' you gave in Manage Jenkins -> System
                     withSonarQubeEnv('SonarQube-Server') {
-                        sh "${scannerHome}/bin/sonar-scanner \
+                        sh "${scannerHome}/opt/sonar-scanner/bin/sonar-scanner
                         -Dsonar.projectKey=DEVOPSFINALPROJECT \
                         -Dsonar.projectName=DEVOPSFINALPROJECT \
                         -Dsonar.host.url=http://192.168.56.22:9000 \
