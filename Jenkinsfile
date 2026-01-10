@@ -24,7 +24,7 @@ pipeline {
                     def scannerHome = tool 'SonarScanner' 
                     
                     // This must match the 'Name' you gave in Manage Jenkins -> System
-                    withSonarQubeEnv('YourSonarServerName') {
+                    withSonarQubeEnv('SonarQube-Server') {
                         sh "${scannerHome}/bin/sonar-scanner \
                         -Dsonar.projectKey=DEVOPSFINALPROJECT \
                         -Dsonar.projectName=DEVOPSFINALPROJECT \
