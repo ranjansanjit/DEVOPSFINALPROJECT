@@ -19,24 +19,19 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                script {
-                    // Must match: Manage Jenkins → Global Tool Configuration
-                    def scannerHome = tool 'SonarScanner'
-
-                    // Must match: Manage Jenkins → System → SonarQube servers
-                    withSonarQubeEnv('SonarQube-Server') {
-                        sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=DEVOPSFINALPROJECT \
-                            -Dsonar.projectName=DEVOPSFINALPROJECT \
-                            -Dsonar.sources=. \
-                            -Dsonar.java.binaries=.
-                        """
-                    }
-                }
-            }
+    steps {
+        script {
+            sh """
+                sonar-scanner \
+                -Dsonar.projectKey=contact-manager \
+                -Dsonar.projectName=contact-manager \
+                -Dsonar.sources=. \
+                -Dsonar.host.url=https://192.168.56.22:9000 \
+                -Dsonar.login=sqp_e8f938ade13713bb6069803240aa2bdcfe91b7a1
+            """
         }
+    }
+}
 
         stage('Quality Gate') {
             steps {
