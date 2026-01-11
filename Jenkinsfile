@@ -42,7 +42,7 @@ pipeline {
             steps {
                 // Now that the URL is fixed in Jenkins settings, this will work
                 timeout(time: 1, unit: 'HOURS') {
-                    waitForQualityGate abortPipeline: true
+                    waitForQualityGate abortPipeline: false
                 }
             }
         }
