@@ -9,41 +9,39 @@ pipeline {
         IMAGE_TAG           = "v${BUILD_NUMBER}"
         VM_USER             = 'ubuntu'
         VM_IP               = '192.168.56.21'
-        REPO_URL            = 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
+        REPO_NAME           = 'DEVOPSFINALPROJECT'
+        SONAR_PROJECT_KEY   = 'DEVOPSFINALPROJECT' // Ensure this matches SonarQube UI exactly
+        SONAR_HOST          = 'http://192.168.56.22:9000'
     }
 
     stages {
-
         stage('Clean Workspace') {
             steps {
-                deleteDir() // Clean workspace
+                deleteDir()
             }
         }
 
         stage('Checkout') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    sh """
-                        git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git
-                    """
+                    sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/${REPO_NAME}.git ."
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
+                // Using 'sonar-token' which should be a Secret Text in Jenkins
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SonarQube-Server') {
-                        dir('DEVOPSFINALPROJECT') {
-                            sh """
-                                /opt/sonar-scanner/bin/sonar-scanner \
-                                -Dsonar.projectKey=DEVOPSFINALPROJECT \
-                                -Dsonar.sources=. \
-                                -Dsonar.host.url=http://192.168.56.22:9000 \
-                                -Dsonar.token=${SONAR_AUTH_TOKEN} \
-                                -Dsonar.sourceEncoding=UTF-8
-                            """
-                        }
+                        sh """
+                            /opt/sonar-scanner/bin/sonar-scanner \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=${SONAR_HOST} \
+                            -Dsonar.token=${SONAR_TOKEN} \
+                            -Dsonar.sourceEncoding=UTF-8
+                        """
                     }
                 }
             }
@@ -52,6 +50,7 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
+                    // This requires a Webhook configured in SonarQube pointing back to Jenkins
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -61,22 +60,20 @@ pipeline {
             parallel {
                 stage('Backend') {
                     steps {
-                        dir('DEVOPSFINALPROJECT/app/backend') {
+                        dir('app/backend') {
                             sh """
                                 docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
-                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest \
-                                           ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
                             """
                         }
                     }
                 }
                 stage('Frontend') {
                     steps {
-                        dir('DEVOPSFINALPROJECT/app/frontend') {
+                        dir('app/frontend') {
                             sh """
                                 docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
-                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest \
-                                           ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
                             """
                         }
                     }
@@ -89,7 +86,6 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                     sh """
                         echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
-
                         docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
                         docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
                         docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
@@ -104,17 +100,15 @@ pipeline {
                 sshagent(['vm-ssh-sshkey']) {
                     withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
-                            echo "Connected successfully!"
-
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << 'EOF'
                             echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
-
+                            
                             docker stop backend frontend || true
                             docker rm backend frontend || true
-
+                            
                             docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
                             docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
-
+                            
                             docker run -d --name backend -p 8080:8080 ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
                             docker run -d --name frontend -p 80:80 ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
 EOF
@@ -123,15 +117,10 @@ EOF
                 }
             }
         }
-
-    } // End stages
+    }
 
     post {
-        success {
-            echo "Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
-        }
-        failure {
-            echo "Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
-        }
+        success { echo "Build SUCCESS for ${REPO_NAME} #${BUILD_NUMBER}" }
+        failure { echo "Build FAILED for ${REPO_NAME} #${BUILD_NUMBER}" }
     }
 }
