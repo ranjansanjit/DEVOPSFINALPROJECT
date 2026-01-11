@@ -9,20 +9,11 @@ pipeline {
         IMAGE_TAG           = "v${BUILD_NUMBER}"
     }
 
-    stages {
-
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
-            }
-        }
-
-        stage('SonarQube Analysis') {
+    stage('SonarQube Analysis') {
     steps {
         script {
             sh """
-                sonar-scanner \
+                /opt/sonar-scanner/bin/sonar-scanner \
                 -Dsonar.projectKey=contact-manager \
                 -Dsonar.projectName=contact-manager \
                 -Dsonar.sources=. \
