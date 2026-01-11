@@ -22,14 +22,17 @@ pipeline {
                 script {
                     // Use your Sonar token securely from Jenkins credentials
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh """
-                            /opt/sonar-scanner/bin/sonar-scanner -X \
-                            -Dsonar.projectKey=contact-manager \
-                            -Dsonar.projectName="Contact Manager" \
-                            -Dsonar.sources=. \
-                            -Dsonar.host.url=http://192.168.56.22:9000 \
-                            -Dsonar.login=sqp_725fa3cc283a9ea67020273cae0d2397062f2145
-                        """
+                        // This ensures waitForQualityGate can work
+                        withSonarQubeEnv('SonarQube-Server') {
+                            sh """
+                                /opt/sonar-scanner/bin/sonar-scanner -X \
+                                -Dsonar.projectKey=contact-manager \
+                                -Dsonar.projectName="Contact Manager" \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=http://192.168.56.22:9000 \
+                                -Dsonar.login=$SONAR_TOKEN
+                            """
+                        }
                     }
                 }
             }
