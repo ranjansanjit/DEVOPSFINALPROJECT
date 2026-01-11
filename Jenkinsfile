@@ -18,25 +18,25 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
+    stage('SonarQube Analysis') {
     steps {
-        script {
-            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                withSonarQubeEnv('SonarQube-Server') { // Must match exactly
-                    sh """
-                        echo "Checking SonarQube connectivity..."
-                        curl -v http://192.168.56.22:9000/api/system/status
-                        echo "Running SonarScanner..."
-                        /opt/sonar-scanner/bin/sonar-scanner -X \
-                        -Dsonar.projectKey=contact-manager \
-                        -Dsonar.projectName="Contact Manager" \
-                        -Dsonar.sources=. \
-                        -Dsonar.login=$SONAR_TOKEN
-                    """
-                }
+        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+            withSonarQubeEnv('SonarQube-Server') {
+                sh """
+                    echo "Checking SonarQube connectivity..."
+                    curl -s http://192.168.56.22:9000/api/system/status
+                """
+                // Secure call without interpolating in """ string
+                sh '/opt/sonar-scanner/bin/sonar-scanner -X \
+                    -Dsonar.projectKey=contact-manager \
+                    -Dsonar.projectName="Contact Manager" \
+                    -Dsonar.sources=. \
+                    -Dsonar.login=$SONAR_TOKEN'
             }
         }
     }
 }
+
 
 
         stage('Quality Gate') {
