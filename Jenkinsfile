@@ -12,31 +12,24 @@ pipeline {
         VM_IP               = '192.168.56.23' // Change to your VM's IP
     }
 
-    stages {
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
-            }
+    stage('SonarQube Analysis') {
+    steps {
+        // withSonarQubeEnv automatically handles the URL and Token 
+        // using the credentials you linked to "SonarQube-Server" in Jenkins settings
+        withSonarQubeEnv('SonarQube-Server') {
+            sh """
+            /opt/sonar-scanner/bin/sonar-scanner \
+            -Dsonar.projectKey=contact-manager
+            """
         }
+    }
+}
 
-        stage('SonarQube Analysis') {
-            steps {
-                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv('SonarQube-Server') {
-                        sh "/opt/sonar-scanner/bin/sonar-scanner \
-                        -Dsonar.projectKey=contact-manager \
-                        -Dsonar.host.url=http://192.168.56.22:9000 \
-                        -Dsonar.login=$SONAR_TOKEN"
-                    }
-                }
-            }
-        }
-
-        stage("Quality Gate") {
-           steps {
-        // Wait for SonarQube analysis to be completed and return status
-        // The timeout here is for the whole stage, not the network socket
+stage("Quality Gate") {
+    steps {
+        // Added a 20-second sleep to ensure the background task starts 
+        // before Jenkins starts checking for the result.
+        sleep 20
         timeout(time: 5, unit: 'MINUTES') {
             waitForQualityGate abortPipeline: true
         }
