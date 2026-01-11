@@ -10,18 +10,27 @@ pipeline {
     }
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
+            }
+        }
 
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    sh """
-                        /opt/sonar-scanner/bin/sonar-scanner \
-                        -Dsonar.projectKey=contact-manager \
-                        -Dsonar.projectName=contact-manager \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=https://192.168.56.22:9000 \
-                        -Dsonar.login=sqp_e8f938ade13713bb6069803240aa2bdcfe91b7a1
-                    """
+                    // Use your Sonar token securely from Jenkins credentials
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        sh """
+                            /opt/sonar-scanner/bin/sonar-scanner -X \
+                            -Dsonar.projectKey=contact-manager \
+                            -Dsonar.projectName="Contact Manager" \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=http://192.168.56.22:9000 \
+                            -Dsonar.login=sqp_725fa3cc283a9ea67020273cae0d2397062f2145
+                        """
+                    }
                 }
             }
         }
@@ -68,9 +77,8 @@ pipeline {
                     )
                 ]) {
                     sh """
-                        echo "\$HARBOR_PASS" | docker login ${REGISTRY_URL} \
-                        -u "\$HARBOR_USER" --password-stdin
-
+                        echo "\$HARBOR_PASS" | docker login ${REGISTRY_URL} -u "\$HARBOR_USER" --password-stdin
+                        
                         docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
                         docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
                         docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
