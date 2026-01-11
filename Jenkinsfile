@@ -7,13 +7,9 @@ pipeline {
         BACKEND_IMAGE_NAME  = 'backend'
         FRONTEND_IMAGE_NAME = 'frontend'
         IMAGE_TAG           = "v${BUILD_NUMBER}"
-        // Add your VM details here
-        VM_USER             = 'ubuntu' // or your specific user
-        VM_IP               = '192.168.56.23' // Change to your VM's IP
+        VM_USER             = 'ubuntu'
+        VM_IP               = '192.168.56.23'
     }
-
-    pipeline {
-    agent any
 
     stages {
         stage('Checkout Code') {
@@ -25,7 +21,6 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                // This block uses the name from Jenkins Global Tool Config
                 withSonarQubeEnv('SonarQube-Server') {
                     sh """
                     /opt/sonar-scanner/bin/sonar-scanner \
@@ -37,16 +32,13 @@ pipeline {
 
         stage("Quality Gate") {
             steps {
+                // Sleep gives SonarQube background tasks time to initialize
                 sleep 20
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
-        
-        // Add your other stages (Build, Tag, Deploy) here
-    } // End of stages
-} // End of pipeline
 
         stage('Build & Tag Images') {
             parallel {
@@ -54,9 +46,9 @@ pipeline {
                     steps {
                         dir('app/backend') {
                             sh """
-                                docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
-                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest \
-                                           ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                            docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
+                            docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest \
+                                       ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
                             """
                         }
                     }
@@ -65,9 +57,9 @@ pipeline {
                     steps {
                         dir('app/frontend') {
                             sh """
-                                docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
-                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest \
-                                           ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                            docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
+                            docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest \
+                                       ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
                             """
                         }
                     }
@@ -79,11 +71,11 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                     sh """
-                        echo "\$HARBOR_PASS" | docker login ${REGISTRY_URL} -u "\$HARBOR_USER" --password-stdin
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
+                    echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
+                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
                     """
                 }
             }
@@ -91,35 +83,34 @@ pipeline {
 
         stage('Deploy to VM') {
             steps {
-                // Requires 'ssh-agent' plugin and 'vm-ssh-key' credentials in Jenkins
                 sshagent(['vm-ssh-key']) {
                     withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << 'EOF'
-                                # Login to Harbor on the VM
-                                echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
-                                
-                                # Pull latest images
-                                docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                                docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
-                                
-                                # Restart containers (Assuming docker-compose.yml is already on the VM)
-                                # If you don't have compose, we can run them manually:
-                                docker stop backend frontend || true
-                                docker rm backend frontend || true
-                                
-                                docker run -d --name backend -p 8080:8080 ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                                docker run -d --name frontend -p 80:80 ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
+                            echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
+                            
+                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
+                            
+                            docker stop backend frontend || true
+                            docker rm backend frontend || true
+                            
+                            docker run -d --name backend -p 8080:8080 ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+                            docker run -d --name frontend -p 80:80 ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
 EOF
                         """
                     }
                 }
             }
         }
-    }
+    } // End of stages
 
     post {
-        success { echo "Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}" }
-        failure { echo "Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}" }
+        success {
+            echo "Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
+        }
+        failure {
+            echo "Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
+        }
     }
 }
