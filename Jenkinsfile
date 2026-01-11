@@ -29,23 +29,23 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                // Using 'sonar-token' which should be a Secret Text in Jenkins
-                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv('SonarQube-Server') {
-                        sh """
-                            /opt/sonar-scanner/bin/sonar-scanner \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.sources=. \
-                            -Dsonar.host.url=${SONAR_HOST} \
-                            -Dsonar.token=${SONAR_TOKEN} \
-                            -Dsonar.sourceEncoding=UTF-8
-                        """
-                    }
+       stage('SonarQube Analysis') {
+           steps {
+        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+            withSonarQubeEnv('SonarQube-Server') {
+                // Workspace ke sahi folder mein jayein
+                dir('DEVOPSFINALPROJECT') {
+                    sh """
+                        /opt/sonar-scanner/bin/sonar-scanner \
+                        -Dsonar.projectKey=DEVOPSFINALPROJECT \
+                        -Dsonar.sources=. \
+                        -Dsonar.login=${SONAR_TOKEN}
+                    """
                 }
             }
         }
+    }
+}
 
         stage("Quality Gate") {
             steps {
