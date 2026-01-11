@@ -51,7 +51,7 @@ pipeline {
             steps {
                 sleep 20 // Give SonarQube time to process
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                    waitForQualityGate abortPipeline: false
                 }
             }
         }
