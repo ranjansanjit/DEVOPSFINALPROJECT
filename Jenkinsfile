@@ -33,15 +33,15 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
-            steps {
-                // Give SonarQube a few seconds to process the background task
-                sleep time: 10, unit: 'SECONDS'
-                timeout(time: 1, unit: 'HOURS') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
+        stage("Quality Gate") {
+           steps {
+        // Wait for SonarQube analysis to be completed and return status
+        // The timeout here is for the whole stage, not the network socket
+        timeout(time: 5, unit: 'MINUTES') {
+            waitForQualityGate abortPipeline: true
         }
+    }
+}
 
         stage('Build & Tag Images') {
             parallel {
