@@ -24,12 +24,13 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SonarQube-Server') {
-                        sh 'curl -s http://192.168.56.22:9000/api/system/status'
+                        // Fixed: Explicitly passing the host URL to the scanner
                         sh '''
                             /opt/sonar-scanner/bin/sonar-scanner -X \
                             -Dsonar.projectKey=contact-manager \
                             -Dsonar.projectName="Contact Manager" \
                             -Dsonar.sources=. \
+                            -Dsonar.host.url=http://192.168.56.22:9000 \
                             -Dsonar.login=$SONAR_TOKEN
                         '''
                     }
