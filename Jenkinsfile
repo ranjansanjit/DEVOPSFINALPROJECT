@@ -35,15 +35,14 @@ pipeline {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
                     withSonarQubeEnv('SonarQube-Server') {
                         dir('DEVOPSFINALPROJECT') {
-                            // **Safe sh call using list to avoid exposing token**
-                            sh [
-                                '/opt/sonar-scanner/bin/sonar-scanner',
-                                "-Dsonar.projectKey=DEVOPSFINALPROJECT",
-                                "-Dsonar.sources=.",
-                                "-Dsonar.host.url=http://192.168.56.22:9000",
-                                "-Dsonar.token=${SONAR_AUTH_TOKEN}",
-                                "-Dsonar.sourceEncoding=UTF-8"
-                            ]
+                            sh """
+                                /opt/sonar-scanner/bin/sonar-scanner \
+                                -Dsonar.projectKey=DEVOPSFINALPROJECT \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=http://192.168.56.22:9000 \
+                                -Dsonar.token=${SONAR_AUTH_TOKEN} \
+                                -Dsonar.sourceEncoding=UTF-8
+                            """
                         }
                     }
                 }
