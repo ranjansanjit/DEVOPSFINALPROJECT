@@ -9,20 +9,22 @@ pipeline {
         IMAGE_TAG           = "v${BUILD_NUMBER}"
     }
 
-    stage('SonarQube Analysis') {
-    steps {
-        script {
-            sh """
-                /opt/sonar-scanner/bin/sonar-scanner \
-                -Dsonar.projectKey=contact-manager \
-                -Dsonar.projectName=contact-manager \
-                -Dsonar.sources=. \
-                -Dsonar.host.url=https://192.168.56.22:9000 \
-                -Dsonar.login=sqp_e8f938ade13713bb6069803240aa2bdcfe91b7a1
-            """
+    stages {
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    sh """
+                        /opt/sonar-scanner/bin/sonar-scanner \
+                        -Dsonar.projectKey=contact-manager \
+                        -Dsonar.projectName=contact-manager \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=https://192.168.56.22:9000 \
+                        -Dsonar.login=sqp_e8f938ade13713bb6069803240aa2bdcfe91b7a1
+                    """
+                }
+            }
         }
-    }
-}
 
         stage('Quality Gate') {
             steps {
