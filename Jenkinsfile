@@ -10,7 +10,7 @@ pipeline {
         VM_USER             = 'ubuntu'
         VM_IP               = '192.168.56.21'
         REPO_NAME           = 'DEVOPSFINALPROJECT'
-        SONAR_PROJECT_KEY   = 'DEVOPSFINALPROJECT' // Ensure this matches SonarQube UI exactly
+        SONAR_PROJECT_KEY   = 'DEVOPSFINALPROJECT' 
         SONAR_HOST          = 'http://192.168.56.22:9000'
     }
 
@@ -24,33 +24,32 @@ pipeline {
         stage('Checkout') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/${REPO_NAME}.git ."
+                    // Yahan hum '.' use kar rahe hain, matlab code seedha workspace mein aayega
+                    sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
                 }
             }
         }
 
-       stage('SonarQube Analysis') {
-           steps {
-        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-            withSonarQubeEnv('SonarQube-Server') {
-                // Workspace ke sahi folder mein jayein
-                dir('DEVOPSFINALPROJECT') {
-                    sh """
-                        /opt/sonar-scanner/bin/sonar-scanner \
-                        -Dsonar.projectKey=DEVOPSFINALPROJECT \
-                        -Dsonar.sources=. \
-                        -Dsonar.login=${SONAR_TOKEN}
-                    """
+        stage('SonarQube Analysis') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    withSonarQubeEnv('SonarQube-Server') {
+                        // FIX: 'dir' block hata diya hai kyunki code root mein hai
+                        sh """
+                            /opt/sonar-scanner/bin/sonar-scanner \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=${SONAR_HOST} \
+                            -Dsonar.login=${SONAR_TOKEN}
+                        """
+                    }
                 }
             }
         }
-    }
-}
 
         stage("Quality Gate") {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    // This requires a Webhook configured in SonarQube pointing back to Jenkins
                     waitForQualityGate abortPipeline: true
                 }
             }
