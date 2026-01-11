@@ -11,11 +11,13 @@ pipeline {
         VM_IP               = '192.168.56.23'
     }
 
+    
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', 
-                    url: 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
+                sshagent(['my-ssh-credentials-id']) {
+                    sh 'git clone git@github.com:ranjansanjit/DEVOPSFINALPROJECT.git'
+                }
             }
         }
 
