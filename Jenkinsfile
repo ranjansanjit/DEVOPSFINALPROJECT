@@ -99,11 +99,9 @@ pipeline {
                         sh """
                         ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
                         echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
-                        
-                        # Navigate to deployment directory or create if missing
+
                         mkdir -p ~/deploy && cd ~/deploy
-                        
-                        # Create docker-compose.yml dynamically
+
                         cat > docker-compose.yml << COMPOSE
                         version: '3'
                         services:
@@ -120,8 +118,7 @@ pipeline {
                               - "80:80"
                             restart: always
                         COMPOSE
-                        
-                        # Deploy containers
+
                         docker-compose down
                         docker-compose pull
                         docker-compose up -d
