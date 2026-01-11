@@ -37,9 +37,9 @@ pipeline {
                         // FIX: 'dir' block hata diya hai kyunki code root mein hai
                         sh """
                             /opt/sonar-scanner/bin/sonar-scanner \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.projectKey= Contact Manager \
                             -Dsonar.sources=. \
-                            -Dsonar.host.url=${SONAR_HOST} \
+                            -Dsonar.host.url=http://192.168.56.22:9000/ \
                             -Dsonar.login=${SONAR_TOKEN}
                         """
                     }
@@ -50,7 +50,7 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: false
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
