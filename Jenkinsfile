@@ -37,7 +37,7 @@ pipeline {
                           -Dsonar.projectName="Contact Manager" \
                           -Dsonar.sources=. \
                           -Dsonar.host.url=http://192.168.56.22:9000 \
-                          -Dsonar.login=${SONAR_TOKEN}
+                          -Dsonar.login=sqa_fc56872ce76895b1e3b8bedbdceab277cc95d497
                         """
                     }
                 }
