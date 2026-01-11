@@ -10,6 +10,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
@@ -18,26 +19,24 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-    stage('SonarQube Analysis') {
-    steps {
-        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-            withSonarQubeEnv('SonarQube-Server') {
-                sh """
-                    echo "Checking SonarQube connectivity..."
-                    curl -s http://192.168.56.22:9000/api/system/status
-                """
-                // Secure call without interpolating in """ string
-                sh '/opt/sonar-scanner/bin/sonar-scanner -X \
-                    -Dsonar.projectKey=contact-manager \
-                    -Dsonar.projectName="Contact Manager" \
-                    -Dsonar.sources=. \
-                    -Dsonar.login=$SONAR_TOKEN'
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    withSonarQubeEnv('SonarQube-Server') {
+                        // Check connectivity first
+                        sh 'curl -s http://192.168.56.22:9000/api/system/status'
+
+                        // Run SonarScanner securely
+                        sh '''
+                            /opt/sonar-scanner/bin/sonar-scanner -X \
+                            -Dsonar.projectKey=contact-manager \
+                            -Dsonar.projectName="Contact Manager" \
+                            -Dsonar.sources=. \
+                            -Dsonar.login=$SONAR_TOKEN
+                        '''
+                    }
+                }
             }
         }
-    }
-}
-
-
 
         stage('Quality Gate') {
             steps {
