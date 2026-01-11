@@ -16,7 +16,7 @@ pipeline {
 
         stage('Clean Workspace') {
             steps {
-                deleteDir() // Avoid Git errors
+                deleteDir() // Clean workspace
             }
         }
 
@@ -34,14 +34,16 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
                     withSonarQubeEnv('SonarQube-Server') {
-                        sh """
-                        /opt/sonar-scanner/bin/sonar-scanner \
-                            -Dsonar.projectKey=contact-manager \
-                            -Dsonar.sources=DEVOPSFINALPROJECT \
-                            -Dsonar.host.url=http://192.168.56.22:9000 \
-                            -Dsonar.login=${SONAR_AUTH_TOKEN} \
-                            -Dsonar.sourceEncoding=UTF-8
-                        """
+                        dir('DEVOPSFINALPROJECT') {
+                            sh """
+                                /opt/sonar-scanner/bin/sonar-scanner \
+                                    -Dsonar.projectKey=DEVOPSFINALPROJECT \
+                                    -Dsonar.sources=. \
+                                    -Dsonar.host.url=http://192.168.56.22:9000 \
+                                    -Dsonar.login=${SONAR_AUTH_TOKEN} \
+                                    -Dsonar.sourceEncoding=UTF-8
+                            """
+                        }
                     }
                 }
             }
@@ -49,9 +51,8 @@ pipeline {
 
         stage("Quality Gate") {
             steps {
-                sleep 20 // Wait for SonarQube analysis
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: false
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -62,9 +63,9 @@ pipeline {
                     steps {
                         dir('DEVOPSFINALPROJECT/app/backend') {
                             sh """
-                            docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
-                            docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest \
-                                       ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                                docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
+                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest \
+                                           ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
                             """
                         }
                     }
@@ -73,9 +74,9 @@ pipeline {
                     steps {
                         dir('DEVOPSFINALPROJECT/app/frontend') {
                             sh """
-                            docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
-                            docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest \
-                                       ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                                docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
+                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest \
+                                           ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
                             """
                         }
                     }
@@ -87,12 +88,12 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                     sh """
-                    echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
+                        echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
 
-                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
-                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
-                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
                     """
                 }
             }
@@ -100,7 +101,7 @@ pipeline {
 
         stage('Deploy to VM') {
             steps {
-                sshagent(['vm-ssh-sshkey']) {  // SSH credential for VM
+                sshagent(['vm-ssh-sshkey']) {
                     withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
@@ -108,11 +109,11 @@ pipeline {
 
                             echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
 
-                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
-
                             docker stop backend frontend || true
                             docker rm backend frontend || true
+
+                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
 
                             docker run -d --name backend -p 8080:8080 ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
                             docker run -d --name frontend -p 80:80 ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
@@ -123,14 +124,14 @@ EOF
             }
         }
 
-    } // End of stages
+    } // End stages
 
     post {
         success {
-            echo "Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
+            echo "✅ Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
         failure {
-            echo "Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
+            echo "❌ Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
     }
 }
