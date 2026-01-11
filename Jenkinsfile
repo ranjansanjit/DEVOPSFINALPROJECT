@@ -23,10 +23,10 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    // This refers to the Name you set in Jenkins System Settings
                     withSonarQubeEnv('SonarQube-Server') {
-                        // Fixed: Explicitly passing the host URL to the scanner
                         sh '''
-                            /opt/sonar-scanner/bin/sonar-scanner -X \
+                            /opt/sonar-scanner/bin/sonar-scanner \
                             -Dsonar.projectKey=contact-manager \
                             -Dsonar.projectName="Contact Manager" \
                             -Dsonar.sources=. \
@@ -40,6 +40,7 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
+                // Now that the URL is fixed in Jenkins settings, this will work
                 timeout(time: 1, unit: 'HOURS') {
                     waitForQualityGate abortPipeline: true
                 }
