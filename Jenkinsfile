@@ -9,41 +9,35 @@ pipeline {
         IMAGE_TAG           = "v${BUILD_NUMBER}"
         VM_USER             = 'ubuntu'
         VM_IP               = '192.168.56.23'
-        GIT_REPO            = 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
-        SONAR_PROJECT_KEY   = 'contact-manager'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                    sh """
-                    rm -rf DEVOPSFINALPROJECT
-                    git clone https://${GITHUB_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git
-                    """
+                withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                    sh 'git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube-Server') {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh """
-                        /opt/sonar-scanner/bin/sonar-scanner \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.sources=DEVOPSFINALPROJECT \
-                            -Dsonar.host.url=http://192.168.56.22:9000 \
-                            -Dsonar.login=${SONAR_TOKEN}
-                        """
-                    }
+                withSonarQubeEnv('SonarQube-Server') { // Make sure this matches your SonarQube installation name in Jenkins
+                    sh """
+                    /opt/sonar-scanner/bin/sonar-scanner \
+                        -Dsonar.projectKey=contact-manager \
+                        -Dsonar.sources=DEVOPSFINALPROJECT \
+                        -Dsonar.host.url=http://192.168.56.22:9000 \
+                        -Dsonar.login=${SONAR_AUTH_TOKEN} \
+                        -Dsonar.sourceEncoding=UTF-8
+                    """
                 }
             }
         }
 
-        stage('Quality Gate') {
+        stage("Quality Gate") {
             steps {
-                sleep 20
+                sleep 20 // Wait for SonarQube analysis
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
@@ -113,7 +107,7 @@ EOF
                 }
             }
         }
-    }
+    } // End of stages
 
     post {
         success {
