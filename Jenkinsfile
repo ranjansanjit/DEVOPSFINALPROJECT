@@ -23,16 +23,11 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    // This refers to the Name you set in Jenkins System Settings
                     withSonarQubeEnv('SonarQube-Server') {
-                        sh '''
-                            /opt/sonar-scanner/bin/sonar-scanner \
-                            -Dsonar.projectKey=contact-manager \
-                            -Dsonar.projectName="Contact Manager" \
-                            -Dsonar.sources=. \
-                            -Dsonar.host.url=http://192.168.56.22:9000 \
-                            -Dsonar.login=$SONAR_TOKEN
-                        '''
+                        sh "/opt/sonar-scanner/bin/sonar-scanner \
+                        -Dsonar.projectKey=contact-manager \
+                        -Dsonar.host.url=http://192.168.56.22:9000 \
+                        -Dsonar.login=$SONAR_TOKEN"
                     }
                 }
             }
@@ -40,9 +35,10 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                // Now that the URL is fixed in Jenkins settings, this will work
+                // Give SonarQube a few seconds to process the background task
+                sleep time: 10, unit: 'SECONDS'
                 timeout(time: 1, unit: 'HOURS') {
-                    waitForQualityGate abortPipeline: false
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
