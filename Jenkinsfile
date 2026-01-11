@@ -8,7 +8,7 @@ pipeline {
         FRONTEND_IMAGE_NAME = 'frontend'
         IMAGE_TAG           = "v${BUILD_NUMBER}"
         VM_USER             = 'ubuntu'
-        VM_IP               = '192.168.56.23'
+        VM_IP               = '192.168.56.21'
         REPO_URL            = 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
     }
 
@@ -128,10 +128,10 @@ EOF
 
     post {
         success {
-            echo "✅ Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
+            echo " Build SUCCESS for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
         failure {
-            echo "❌ Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
+            echo " Build FAILED for DEVOPSFINALPROJECT #${BUILD_NUMBER}"
         }
     }
 }
