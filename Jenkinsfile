@@ -9,14 +9,18 @@ pipeline {
         IMAGE_TAG           = "v${BUILD_NUMBER}"
         VM_USER             = 'ubuntu'
         VM_IP               = '192.168.56.23'
+        GIT_REPO            = 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
+        SONAR_PROJECT_KEY   = 'contact-manager'
     }
 
-    
     stages {
         stage('Checkout') {
             steps {
-                sshagent(['my-ssh-credentials-id']) {
-                    sh 'git clone git@github.com:ranjansanjit/DEVOPSFINALPROJECT.git'
+                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                    sh """
+                    rm -rf DEVOPSFINALPROJECT
+                    git clone https://${GITHUB_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git
+                    """
                 }
             }
         }
@@ -24,17 +28,21 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube-Server') {
-                    sh """
-                    /opt/sonar-scanner/bin/sonar-scanner \
-                    -Dsonar.projectKey=contact-manager
-                    """
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        sh """
+                        /opt/sonar-scanner/bin/sonar-scanner \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.sources=DEVOPSFINALPROJECT \
+                            -Dsonar.host.url=http://192.168.56.22:9000 \
+                            -Dsonar.login=${SONAR_TOKEN}
+                        """
+                    }
                 }
             }
         }
 
-        stage("Quality Gate") {
+        stage('Quality Gate') {
             steps {
-                // Sleep gives SonarQube background tasks time to initialize
                 sleep 20
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
@@ -46,7 +54,7 @@ pipeline {
             parallel {
                 stage('Backend') {
                     steps {
-                        dir('app/backend') {
+                        dir('DEVOPSFINALPROJECT/app/backend') {
                             sh """
                             docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
                             docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest \
@@ -57,7 +65,7 @@ pipeline {
                 }
                 stage('Frontend') {
                     steps {
-                        dir('app/frontend') {
+                        dir('DEVOPSFINALPROJECT/app/frontend') {
                             sh """
                             docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
                             docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest \
@@ -105,7 +113,7 @@ EOF
                 }
             }
         }
-    } // End of stages
+    }
 
     post {
         success {
