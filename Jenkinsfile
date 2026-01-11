@@ -16,7 +16,7 @@ pipeline {
 
         stage('Clean Workspace') {
             steps {
-                deleteDir() // Avoid git errors if repo already exists
+                deleteDir() // Remove old workspace content
             }
         }
 
@@ -33,7 +33,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
-                    withSonarQubeEnv('SonarQube-Server') { // Name in Jenkins > Configure System
+                    withSonarQubeEnv('SonarQube-Server') {
                         sh """
                         /opt/sonar-scanner/bin/sonar-scanner \
                             -Dsonar.projectKey=contact-manager \
@@ -49,7 +49,7 @@ pipeline {
 
         stage("Quality Gate") {
             steps {
-                sleep 20 // Give SonarQube time to process
+                sleep 20 // wait for SonarQube background processing
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: false
                 }
@@ -100,7 +100,7 @@ pipeline {
 
         stage('Deploy to VM') {
             steps {
-                sshagent(['vm-ssh-key']) { // Your Jenkins SSH key ID
+                sshagent(['vm-ssh-key']) { // Ensure vm-ssh-key is SSH type, not password
                     withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
