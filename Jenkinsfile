@@ -9,23 +9,21 @@ pipeline {
         IMAGE_TAG           = "v${BUILD_NUMBER}"
         VM_USER             = 'ubuntu'
         VM_IP               = '192.168.56.23'
-        REPO_URL            = 'https://github.com/ranjansanjit/DEVOPSFINALPROJECT.git'
+        REPO_DIR            = 'DEVOPSFINALPROJECT'
     }
 
     stages {
 
         stage('Clean Workspace') {
             steps {
-                deleteDir() // Remove old workspace content
+                deleteDir() // Clean old workspace
             }
         }
 
         stage('Checkout') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    sh """
-                        git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git
-                    """
+                sshagent(['github-ssh-key']) { // SSH key credential for GitHub
+                    sh "git clone git@github.com:ranjansanjit/DEVOPSFINALPROJECT.git ${REPO_DIR}"
                 }
             }
         }
@@ -37,7 +35,7 @@ pipeline {
                         sh """
                         /opt/sonar-scanner/bin/sonar-scanner \
                             -Dsonar.projectKey=contact-manager \
-                            -Dsonar.sources=DEVOPSFINALPROJECT \
+                            -Dsonar.sources=${REPO_DIR} \
                             -Dsonar.host.url=http://192.168.56.22:9000 \
                             -Dsonar.login=${SONAR_AUTH_TOKEN} \
                             -Dsonar.sourceEncoding=UTF-8
@@ -47,9 +45,9 @@ pipeline {
             }
         }
 
-        stage("Quality Gate") {
+        stage('Quality Gate') {
             steps {
-                sleep 20 // wait for SonarQube background processing
+                sleep 20
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: false
                 }
@@ -60,7 +58,7 @@ pipeline {
             parallel {
                 stage('Backend') {
                     steps {
-                        dir('DEVOPSFINALPROJECT/app/backend') {
+                        dir("${REPO_DIR}/app/backend") {
                             sh """
                             docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
                             docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest \
@@ -71,7 +69,7 @@ pipeline {
                 }
                 stage('Frontend') {
                     steps {
-                        dir('DEVOPSFINALPROJECT/app/frontend') {
+                        dir("${REPO_DIR}/app/frontend") {
                             sh """
                             docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
                             docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest \
@@ -100,28 +98,26 @@ pipeline {
 
         stage('Deploy to VM') {
             steps {
-                sshagent(['vm-ssh-key']) { // Ensure vm-ssh-key is SSH type, not password
-                    withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
-                            echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
+                sshagent(['vm-ssh-sshkey']) { // Use SSH key credential, NOT username/password
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
+                        echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
 
-                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
+                        docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+                        docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
 
-                            docker stop backend frontend || true
-                            docker rm backend frontend || true
+                        docker stop backend frontend || true
+                        docker rm backend frontend || true
 
-                            docker run -d --name backend -p 8080:8080 ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                            docker run -d --name frontend -p 80:80 ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
+                        docker run -d --name backend -p 8080:8080 ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+                        docker run -d --name frontend -p 80:80 ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
 EOF
-                        """
-                    }
+                    """
                 }
             }
         }
 
-    } // End of stages
+    } // End stages
 
     post {
         success {
