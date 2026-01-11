@@ -34,11 +34,11 @@ pipeline {
                     withSonarQubeEnv('SonarQube-Server') {
                         sh """
                         /opt/sonar-scanner/bin/sonar-scanner \
-                          -Dsonar.projectKey=contact_manager \
+                          -Dsonar.projectKey=contact-manager \
                           -Dsonar.projectName="Contact Manager" \
                           -Dsonar.sources=. \
                           -Dsonar.host.url=http://192.168.56.22:9000 \
-                          -Dsonar.login=${SONAR_TOKEN}
+                          -Dsonar.login=sqb_5bfb39c57ea06209c550ed57b868185c23a1f462
                         """
                     }
                 }
