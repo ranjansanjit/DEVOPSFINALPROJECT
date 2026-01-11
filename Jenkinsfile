@@ -2,16 +2,14 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY_URL        = 'harbor.registry.local'
-        HARBOR_PROJECT      = 'skr'
-        BACKEND_IMAGE_NAME  = 'backend'
+        REGISTRY_URL = 'harbor.registry.local'
+        HARBOR_PROJECT = 'skr'
+        BACKEND_IMAGE_NAME = 'backend'
         FRONTEND_IMAGE_NAME = 'frontend'
-        IMAGE_TAG           = "v${BUILD_NUMBER}"
-        VM_USER             = 'ubuntu'
-        VM_IP               = '192.168.56.21'
-        REPO_NAME           = 'DEVOPSFINALPROJECT'
-        SONAR_PROJECT_KEY   = 'DEVOPSFINALPROJECT' 
-        SONAR_HOST          = 'http://192.168.56.22:9000'
+        IMAGE_TAG = "v${BUILD_NUMBER}"
+        VM_USER = 'ubuntu'
+        VM_IP = '192.168.56.21'
+        REPO_NAME = 'DEVOPSFINALPROJECT'
     }
 
     stages {
@@ -24,7 +22,6 @@ pipeline {
         stage('Checkout') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    // Yahan hum '.' use kar rahe hain, matlab code seedha workspace mein aayega
                     sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
                 }
             }
@@ -34,20 +31,20 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SonarQube-Server') {
-                        // FIX: 'dir' block hata diya hai kyunki code root mein hai
                         sh """
-                            /opt/sonar-scanner/bin/sonar-scanner \
-                            -Dsonar.projectKey= Contact Manager \
-                            -Dsonar.sources=. \
-                            -Dsonar.host.url=http://192.168.56.22:9000/ \
-                            -Dsonar.login=${SONAR_TOKEN}
+                        /opt/sonar-scanner/bin/sonar-scanner \
+                          -Dsonar.projectKey=contact_manager \
+                          -Dsonar.projectName="Contact Manager" \
+                          -Dsonar.sources=. \
+                          -Dsonar.host.url=http://192.168.56.22:9000 \
+                          -Dsonar.login=${SONAR_TOKEN}
                         """
                     }
                 }
             }
         }
 
-        stage("Quality Gate") {
+        stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
@@ -61,18 +58,19 @@ pipeline {
                     steps {
                         dir('app/backend') {
                             sh """
-                                docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
-                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                            docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
+                            docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
                             """
                         }
                     }
                 }
+
                 stage('Frontend') {
                     steps {
                         dir('app/frontend') {
                             sh """
-                                docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
-                                docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                            docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
+                            docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
                             """
                         }
                     }
@@ -84,33 +82,50 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                     sh """
-                        echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
+                    echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
+                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
                     """
                 }
             }
         }
 
-        stage('Deploy to VM') {
+        stage('Deploy to VM using Docker Compose') {
             steps {
                 sshagent(['vm-ssh-sshkey']) {
                     withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << 'EOF'
-                            echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
-                            
-                            docker stop backend frontend || true
-                            docker rm backend frontend || true
-                            
-                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                            docker pull ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
-                            
-                            docker run -d --name backend -p 8080:8080 ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                            docker run -d --name frontend -p 80:80 ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
-EOF
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
+                        echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
+                        
+                        # Navigate to deployment directory or create if missing
+                        mkdir -p ~/deploy && cd ~/deploy
+                        
+                        # Create docker-compose.yml dynamically
+                        cat > docker-compose.yml << COMPOSE
+                        version: '3'
+                        services:
+                          backend:
+                            image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+                            container_name: backend
+                            ports:
+                              - "8080:8080"
+                            restart: always
+                          frontend:
+                            image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
+                            container_name: frontend
+                            ports:
+                              - "80:80"
+                            restart: always
+                        COMPOSE
+                        
+                        # Deploy containers
+                        docker-compose down
+                        docker-compose pull
+                        docker-compose up -d
+                        EOF
                         """
                     }
                 }
@@ -119,7 +134,11 @@ EOF
     }
 
     post {
-        success { echo "Build SUCCESS for ${REPO_NAME} #${BUILD_NUMBER}" }
-        failure { echo "Build FAILED for ${REPO_NAME} #${BUILD_NUMBER}" }
+        success {
+            echo "Build SUCCESS for ${REPO_NAME} #${BUILD_NUMBER}"
+        }
+        failure {
+            echo "Build FAILED for ${REPO_NAME} #${BUILD_NUMBER}"
+        }
     }
 }
