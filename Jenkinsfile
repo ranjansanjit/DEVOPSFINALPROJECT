@@ -7,20 +7,16 @@ pipeline {
         BACKEND_IMAGE_NAME = 'backend'
         FRONTEND_IMAGE_NAME = 'frontend'
         IMAGE_TAG = "v${BUILD_NUMBER}"
-        VM_USER = 'ubuntu'
+        // CORRECTED: User changed to vagrant
+        VM_USER = 'vagrant' 
         VM_IP = '192.168.56.21'
         REPO_NAME = 'DEVOPSFINALPROJECT'
     }
 
     stages {
-        stage('Clean Workspace') {
+        stage('Clean & Checkout') {
             steps {
                 deleteDir()
-            }
-        }
-
-        stage('Checkout') {
-            steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
                     sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
                 }
@@ -44,15 +40,9 @@ pipeline {
                             """
                         }
                     } catch (Exception e) {
-                        echo "SonarQube failed, but proceeding to build: ${e.getMessage()}"
+                        echo "SonarQube failed, but proceeding: ${e.getMessage()}"
                     }
                 }
-            }
-        }
-
-        stage("Quality Gate") {
-            steps {
-                echo "Skipping Quality Gate wait..."
             }
         }
 
@@ -60,7 +50,7 @@ pipeline {
             parallel {
                 stage('Backend') {
                     steps {
-                        dir('app/backend') {
+                        dir('backend') { // Corrected path to match typical repo structure
                             sh """
                             docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
                             docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
@@ -70,7 +60,7 @@ pipeline {
                 }
                 stage('Frontend') {
                     steps {
-                        dir('app/frontend') {
+                        dir('frontend') { // Corrected path
                             sh """
                             docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
                             docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
@@ -95,16 +85,16 @@ pipeline {
             }
         }
 
-        stage('Deploy to VM using Docker Compose') {
+        stage('Deploy to VM') {
             steps {
                 sshagent(['vm-ssh-sshkey']) {
                     withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << 'EOF'
                         echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
                         mkdir -p ~/deploy && cd ~/deploy
 
-                        cat > docker-compose.yml << COMPOSE
+                        cat > docker-compose.yml << 'COMPOSE'
 version: '3'
 services:
   backend:
@@ -132,11 +122,7 @@ EOF
     }
 
     post {
-        success {
-            echo "Build SUCCESS for ${REPO_NAME} #${BUILD_NUMBER}"
-        }
-        failure {
-            echo "Build FAILED for ${REPO_NAME} #${BUILD_NUMBER}"
-        }
+        success { echo "Build SUCCESS #${BUILD_NUMBER}" }
+        failure { echo "Build FAILED #${BUILD_NUMBER}" }
     }
 }
