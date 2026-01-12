@@ -9,7 +9,6 @@ pipeline {
         IMAGE_TAG = "v${BUILD_NUMBER}"
         VM_USER = 'vagrant' 
         VM_IP = '192.168.56.21'
-        REPO_NAME = 'DEVOPSFINALPROJECT'
     }
 
     stages {
@@ -17,13 +16,10 @@ pipeline {
             steps {
                 deleteDir()
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    // Force clone into the current workspace directory
                     sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
-                    
-                    // DEBUG: This will show exactly what folders Jenkins sees. 
-                    // Look at the Jenkins console output for this stage!
-                    sh "ls -R" 
                 }
+                // This lists every file in the console so you can see the REAL paths
+                sh "find . -maxdepth 3 -not -path '*/.*'"
             }
         }
 
@@ -54,18 +50,25 @@ pipeline {
             parallel {
                 stage('Backend') {
                     steps {
-                        // We use the relative path from the root of the repo
-                        dir('backend') { 
-                            sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest -f Dockerfile ."
-                            sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+                        script {
+                            // Automatically find the folder containing the backend Dockerfile
+                            def backendDir = sh(script: "dirname \$(find . -name Dockerfile | grep -i backend | head -n 1)", returnStdout: true).trim()
+                            dir(backendDir) {
+                                sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ."
+                                sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
+                            }
                         }
                     }
                 }
                 stage('Frontend') {
                     steps {
-                        dir('frontend') {
-                            sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest -f Dockerfile ."
-                            sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+                        script {
+                            // Automatically find the folder containing the frontend Dockerfile
+                            def frontendDir = sh(script: "dirname \$(find . -name Dockerfile | grep -i frontend | head -n 1)", returnStdout: true).trim()
+                            dir(frontendDir) {
+                                sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ."
+                                sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
+                            }
                         }
                     }
                 }
