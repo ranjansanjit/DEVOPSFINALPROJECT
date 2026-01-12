@@ -17,10 +17,12 @@ pipeline {
             steps {
                 deleteDir()
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    // Cloning into the current directory (.)
+                    // Force clone into the current workspace directory
                     sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
-                    // Debug: Check if folders actually exist
-                    sh "ls -F" 
+                    
+                    // DEBUG: This will show exactly what folders Jenkins sees. 
+                    // Look at the Jenkins console output for this stage!
+                    sh "ls -R" 
                 }
             }
         }
@@ -52,23 +54,18 @@ pipeline {
             parallel {
                 stage('Backend') {
                     steps {
-                        // This assumes a folder named 'backend' exists in the root of your repo
+                        // We use the relative path from the root of the repo
                         dir('backend') { 
-                            sh """
-                            docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest .
-                            docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}
-                            """
+                            sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest -f Dockerfile ."
+                            sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
                         }
                     }
                 }
                 stage('Frontend') {
                     steps {
-                        // This assumes a folder named 'frontend' exists in the root of your repo
                         dir('frontend') {
-                            sh """
-                            docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest .
-                            docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}
-                            """
+                            sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest -f Dockerfile ."
+                            sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
                         }
                     }
                 }
@@ -93,7 +90,6 @@ pipeline {
             steps {
                 sshagent(['vm-ssh-sshkey']) {
                     withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
-                        // Using double quotes for the SSH block allows Jenkins variables to be injected
                         sh """
                         ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
                         echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
