@@ -9,15 +9,12 @@ pipeline {
         IMAGE_TAG = "v${BUILD_NUMBER}"
         VM_USER = 'vagrant' 
         VM_IP = '192.168.56.21'
+        MY_EMAIL = 'ranjansanjit@gmail.com'
     }
 
     stages {
-        stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
-        }
-
+        stage('Clean Workspace') { steps { cleanWs() } }
+        
         stage('Checkout') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
@@ -29,18 +26,19 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // This triggers the scan. It will not block the rest of the pipeline.
-                    withSonarQubeEnv('sonarqube') { 
-                        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
-                            sh """
-                            /opt/sonar-scanner/bin/sonar-scanner \
-                              -Dsonar.projectKey=contact_manager \
-                              -Dsonar.projectName="Contact Manager" \
-                              -Dsonar.sources=. \
-                              -Dsonar.host.url=http://192.168.56.22:9000 \
-                              -Dsonar.login=${SONAR_TOKEN} \
-                              -Dsonar.scm.disabled=true
-                            """
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        withSonarQubeEnv('sonarqube') { 
+                            withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
+                                sh """
+                                /opt/sonar-scanner/bin/sonar-scanner \
+                                  -Dsonar.projectKey=contact_manager \
+                                  -Dsonar.projectName="Contact Manager" \
+                                  -Dsonar.sources=. \
+                                  -Dsonar.host.url=http://192.168.56.22:9000 \
+                                  -Dsonar.login=${SONAR_TOKEN} \
+                                  -Dsonar.scm.disabled=true
+                                """
+                            }
                         }
                     }
                 }
@@ -96,21 +94,18 @@ pipeline {
                         ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
                         echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
                         mkdir -p ~/deploy && cd ~/deploy
-
                         cat > docker-compose.yml << COMPOSE
 version: '3'
 services:
   backend:
     image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
     container_name: backend
-    ports:
-      - "8081:8080"
+    ports: ["8081:8080"]
     restart: always
   frontend:
     image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
     container_name: frontend
-    ports:
-      - "80:80"
+    ports: ["80:80"]
     restart: always
 COMPOSE
                         docker-compose down || true
@@ -125,14 +120,16 @@ EOF
     }
 
     post {
-        always {
-            cleanWs()
-        }
+        always { cleanWs() }
         success { 
-            echo "Build SUCCESS #${BUILD_NUMBER}" 
+            mail to: "${MY_EMAIL}",
+                 subject: "Pipeline SUCCESS: Build #${BUILD_NUMBER}",
+                 body: "Hi Ranjan, your pipeline for ${JOB_NAME} build #${BUILD_NUMBER} was successful!\n\nCheck logs here: ${BUILD_URL}"
         }
         failure { 
-            echo "Build FAILED #${BUILD_NUMBER}" 
+            mail to: "${MY_EMAIL}",
+                 subject: "Pipeline FAILED: Build #${BUILD_NUMBER}",
+                 body: "Hi Ranjan, the build #${BUILD_NUMBER} has failed.\n\nPlease check the console output: ${BUILD_URL}console"
         }
     }
 }
