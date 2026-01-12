@@ -32,7 +32,6 @@ pipeline {
                 script {
                     try {
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
-                            // Path unchanged. Added timeout and scm disable for stability.
                             sh """
                             /opt/sonar-scanner/bin/sonar-scanner \
                               -Dsonar.projectKey=contact_manager \
@@ -45,7 +44,7 @@ pipeline {
                             """
                         }
                     } catch (Exception e) {
-                        echo "SonarQube failed due to timeout, but proceeding with build: ${e.getMessage()}"
+                        echo "SonarQube failed, but proceeding to build: ${e.getMessage()}"
                     }
                 }
             }
@@ -53,9 +52,7 @@ pipeline {
 
         stage("Quality Gate") {
             steps {
-                script {
-                    echo "Quality Gate bypass logic enabled..."
-                }
+                echo "Skipping Quality Gate wait..."
             }
         }
 
@@ -71,7 +68,6 @@ pipeline {
                         }
                     }
                 }
-
                 stage('Frontend') {
                     steps {
                         dir('app/frontend') {
@@ -104,8 +100,7 @@ pipeline {
                 sshagent(['vm-ssh-sshkey']) {
                     withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                         sh """
-                        # Yahan connection test karne ke liye timeout add kiya hai
-                        ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=yes ${VM_USER}@${VM_IP} << EOF
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
                         echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
                         mkdir -p ~/deploy && cd ~/deploy
 
@@ -125,7 +120,6 @@ services:
       - "80:80"
     restart: always
 COMPOSE
-
                         docker-compose down || true
                         docker-compose pull
                         docker-compose up -d
@@ -135,6 +129,7 @@ EOF
                 }
             }
         }
+    }
 
     post {
         success {
