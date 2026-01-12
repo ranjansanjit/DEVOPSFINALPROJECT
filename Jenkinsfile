@@ -12,9 +12,14 @@ pipeline {
     }
 
     stages {
-        stage('Clean & Checkout') {
+        stage('Clean Workspace') {
             steps {
-                deleteDir()
+                cleanWs() // Explicitly cleans before start
+            }
+        }
+
+        stage('Checkout') {
+            steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
                     sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
                 }
@@ -38,8 +43,17 @@ pipeline {
                             """
                         }
                     } catch (Exception e) {
-                        echo "SonarQube failed, but proceeding: ${e.getMessage()}"
+                        echo "SonarQube failed: ${e.getMessage()}"
                     }
+                }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                // This ensures the pipeline follows the "Passed" status from SonarQube
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -49,7 +63,7 @@ pipeline {
                 stage('Backend') {
                     steps {
                         script {
-                            def backendPath = sh(script: "find . -iname 'backend' -type d | head -n 1", returnStdout: true).trim()
+                            def backendPath = sh(script: "find . -maxdepth 2 -iname 'backend' -type d | head -n 1", returnStdout: true).trim()
                             dir(backendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ."
                                 sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
@@ -60,7 +74,7 @@ pipeline {
                 stage('Frontend') {
                     steps {
                         script {
-                            def frontendPath = sh(script: "find . -iname 'frontend' -type d | head -n 1", returnStdout: true).trim()
+                            def frontendPath = sh(script: "find . -maxdepth 2 -iname 'frontend' -type d | head -n 1", returnStdout: true).trim()
                             dir(frontendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ."
                                 sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
@@ -101,7 +115,7 @@ services:
     image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
     container_name: backend
     ports:
-      - "8081:8080"  # CHANGED: Host port 8081 mapped to Container port 8080
+      - "8081:8080"
     restart: always
   frontend:
     image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
@@ -122,6 +136,9 @@ EOF
     }
 
     post {
+        always {
+            cleanWs() // Cleans space at the very end
+        }
         success { echo "Build SUCCESS #${BUILD_NUMBER}" }
         failure { echo "Build FAILED #${BUILD_NUMBER}" }
     }
