@@ -30,7 +30,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // "sonarqube" must match the Name defined in Jenkins > Manage Jenkins > System > SonarQube servers
+                    // This 'sonarqube' name MUST match the name in Manage Jenkins > System
                     withSonarQubeEnv('sonarqube') {
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
                             sh """
@@ -52,7 +52,6 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    // This will now successfully wait for the callback from SonarQube
                     waitForQualityGate abortPipeline: true
                 }
             }
