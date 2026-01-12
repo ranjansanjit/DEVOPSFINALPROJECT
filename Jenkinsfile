@@ -29,7 +29,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // This name 'sonarqube' MUST match the name in Jenkins Global Settings
+                    // MUST match Name in Manage Jenkins > System
                     withSonarQubeEnv('sonarqube') { 
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
                             sh '''
