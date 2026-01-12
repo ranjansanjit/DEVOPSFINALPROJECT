@@ -104,7 +104,8 @@ pipeline {
                 sshagent(['vm-ssh-sshkey']) {
                     withCredentials([usernamePassword(credentialsId: 'harbor-creds', usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
+                        # Yahan connection test karne ke liye timeout add kiya hai
+                        ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=yes ${VM_USER}@${VM_IP} << EOF
                         echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
                         mkdir -p ~/deploy && cd ~/deploy
 
@@ -134,7 +135,6 @@ EOF
                 }
             }
         }
-    }
 
     post {
         success {
