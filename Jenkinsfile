@@ -29,18 +29,21 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    withSonarQubeEnv('sonarqube') { 
-                        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
-                            sh '''
-                            /opt/sonar-scanner/bin/sonar-scanner \
-                              -Dsonar.projectKey=contact_manager \
-                              -Dsonar.projectName="Contact Manager" \
-                              -Dsonar.sources=. \
-                              -Dsonar.host.url=http://192.168.56.22:9000 \
-                              -Dsonar.login=${SONAR_TOKEN} \
-                              -Dsonar.scm.disabled=true \
-                              -Dsonar.ws.timeout=300
-                            '''
+                    // Timeout set to 2 minutes so it doesn't hang forever
+                    timeout(time: 2, unit: 'MINUTES') {
+                        withSonarQubeEnv('sonarqube') { 
+                            withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
+                                sh '''
+                                /opt/sonar-scanner/bin/sonar-scanner \
+                                  -Dsonar.projectKey=contact_manager \
+                                  -Dsonar.projectName="Contact Manager" \
+                                  -Dsonar.sources=. \
+                                  -Dsonar.host.url=http://192.168.56.22:9000 \
+                                  -Dsonar.login=${SONAR_TOKEN} \
+                                  -Dsonar.scm.disabled=true \
+                                  -Dsonar.ws.timeout=60
+                                '''
+                            }
                         }
                     }
                 }
@@ -49,7 +52,8 @@ pipeline {
 
         stage("Quality Gate") {
             steps {
-                timeout(time: 300, unit: 'MINUTES') {
+                timeout(time: 3, unit: 'MINUTES') {
+                    // Waits for result from SonarQube
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -60,6 +64,7 @@ pipeline {
                 stage('Backend') {
                     steps {
                         script {
+                            // Path logic unchanged
                             def backendPath = sh(script: "find . -maxdepth 2 -iname 'backend' -type d | head -n 1", returnStdout: true).trim()
                             dir(backendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ."
@@ -71,6 +76,7 @@ pipeline {
                 stage('Frontend') {
                     steps {
                         script {
+                            // Path logic unchanged
                             def frontendPath = sh(script: "find . -maxdepth 2 -iname 'frontend' -type d | head -n 1", returnStdout: true).trim()
                             dir(frontendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ."
@@ -136,11 +142,7 @@ EOF
         always {
             cleanWs()
         }
-        success { 
-            echo "Build SUCCESS #${BUILD_NUMBER}" 
-        }
-        failure { 
-            echo "Build FAILED #${BUILD_NUMBER}" 
-        }
+        success { echo "Build SUCCESS #${BUILD_NUMBER}" }
+        failure { echo "Build FAILED #${BUILD_NUMBER}" }
     }
 }
