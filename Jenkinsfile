@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Clean Workspace') {
             steps {
-                cleanWs() // Explicitly cleans before start
+                cleanWs()
             }
         }
 
@@ -29,7 +29,8 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    try {
+                    // "sonarqube" must match the Name of the SonarQube installation in Jenkins Global Tool Config
+                    withSonarQubeEnv('sonarqube') { 
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
                             sh """
                             /opt/sonar-scanner/bin/sonar-scanner \
@@ -42,8 +43,6 @@ pipeline {
                               -Dsonar.ws.timeout=300
                             """
                         }
-                    } catch (Exception e) {
-                        echo "SonarQube failed: ${e.getMessage()}"
                     }
                 }
             }
@@ -51,8 +50,8 @@ pipeline {
 
         stage("Quality Gate") {
             steps {
-                // This ensures the pipeline follows the "Passed" status from SonarQube
                 timeout(time: 5, unit: 'MINUTES') {
+                    // This now works because withSonarQubeEnv was used above
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -137,7 +136,7 @@ EOF
 
     post {
         always {
-            cleanWs() // Cleans space at the very end
+            cleanWs()
         }
         success { echo "Build SUCCESS #${BUILD_NUMBER}" }
         failure { echo "Build FAILED #${BUILD_NUMBER}" }
