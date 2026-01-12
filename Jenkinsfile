@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Clean Workspace') {
             steps {
-                cleanWs()
+                cleanWs() 
             }
         }
 
@@ -29,7 +29,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // Wrapper added to link analysis to the Quality Gate
+                    // NOTE: 'sonarqube' must match the Name in Manage Jenkins > System
                     withSonarQubeEnv('sonarqube') { 
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
                             sh '''
@@ -51,7 +51,6 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    // This waits for the result from the SonarQube dashboard
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -62,7 +61,6 @@ pipeline {
                 stage('Backend') {
                     steps {
                         script {
-                            // Path discovery logic (Untouched)
                             def backendPath = sh(script: "find . -maxdepth 2 -iname 'backend' -type d | head -n 1", returnStdout: true).trim()
                             dir(backendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ."
@@ -74,7 +72,6 @@ pipeline {
                 stage('Frontend') {
                     steps {
                         script {
-                            // Path discovery logic (Untouched)
                             def frontendPath = sh(script: "find . -maxdepth 2 -iname 'frontend' -type d | head -n 1", returnStdout: true).trim()
                             dir(frontendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ."
@@ -138,9 +135,13 @@ EOF
 
     post {
         always {
-            cleanWs()
+            cleanWs() 
         }
-        success { echo "Build SUCCESS #${BUILD_NUMBER}" }
-        failure { echo "Build FAILED #${BUILD_NUMBER}" }
+        success { 
+            echo "Build SUCCESS #${BUILD_NUMBER}" 
+        }
+        failure { 
+            echo "Build FAILED #${BUILD_NUMBER}" 
+        }
     }
 }
