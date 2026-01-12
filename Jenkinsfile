@@ -9,6 +9,7 @@ pipeline {
         IMAGE_TAG = "v${BUILD_NUMBER}"
         VM_USER = 'vagrant' 
         VM_IP = '192.168.56.21'
+        REPO_NAME = 'DEVOPSFINALPROJECT'
     }
 
     stages {
@@ -29,8 +30,8 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // "sonarqube" must match the Name of the SonarQube installation in Jenkins Global Tool Config
-                    withSonarQubeEnv('sonarqube') { 
+                    // "sonarqube" must match the Name defined in Jenkins > Manage Jenkins > System > SonarQube servers
+                    withSonarQubeEnv('sonarqube') {
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
                             sh """
                             /opt/sonar-scanner/bin/sonar-scanner \
@@ -51,7 +52,7 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    // This now works because withSonarQubeEnv was used above
+                    // This will now successfully wait for the callback from SonarQube
                     waitForQualityGate abortPipeline: true
                 }
             }
