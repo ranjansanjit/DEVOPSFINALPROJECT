@@ -12,10 +12,14 @@ pipeline {
     }
 
     stages {
-        stage('Clean & Checkout') {
+        stage('Clean Workspace') {
             steps {
-                deleteDir()
-                // Cloning the repo into the current workspace
+                cleanWs()
+            }
+        }
+
+        stage('Checkout') {
+            steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
                     sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
                 }
@@ -25,9 +29,10 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    try {
+                    // Wrapper added to link analysis to the Quality Gate
+                    withSonarQubeEnv('sonarqube') { 
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
-                            sh """
+                            sh '''
                             /opt/sonar-scanner/bin/sonar-scanner \
                               -Dsonar.projectKey=contact_manager \
                               -Dsonar.projectName="Contact Manager" \
@@ -36,11 +41,18 @@ pipeline {
                               -Dsonar.login=${SONAR_TOKEN} \
                               -Dsonar.scm.disabled=true \
                               -Dsonar.ws.timeout=300
-                            """
+                            '''
                         }
-                    } catch (Exception e) {
-                        echo "SonarQube failed, but proceeding: ${e.getMessage()}"
                     }
+                }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    // This waits for the result from the SonarQube dashboard
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -50,7 +62,7 @@ pipeline {
                 stage('Backend') {
                     steps {
                         script {
-                            // Finds the folder containing the backend files (case-insensitive)
+                            // Path discovery logic (Untouched)
                             def backendPath = sh(script: "find . -maxdepth 2 -iname 'backend' -type d | head -n 1", returnStdout: true).trim()
                             dir(backendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ."
@@ -62,7 +74,7 @@ pipeline {
                 stage('Frontend') {
                     steps {
                         script {
-                            // Finds the folder containing the frontend files (case-insensitive)
+                            // Path discovery logic (Untouched)
                             def frontendPath = sh(script: "find . -maxdepth 2 -iname 'frontend' -type d | head -n 1", returnStdout: true).trim()
                             dir(frontendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ."
@@ -125,6 +137,9 @@ EOF
     }
 
     post {
+        always {
+            cleanWs()
+        }
         success { echo "Build SUCCESS #${BUILD_NUMBER}" }
         failure { echo "Build FAILED #${BUILD_NUMBER}" }
     }
