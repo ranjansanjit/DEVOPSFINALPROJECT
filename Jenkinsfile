@@ -18,8 +18,6 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
                     sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
                 }
-                // This lists every file in the console so you can see the REAL paths
-                sh "find . -maxdepth 3 -not -path '*/.*'"
             }
         }
 
@@ -51,9 +49,8 @@ pipeline {
                 stage('Backend') {
                     steps {
                         script {
-                            // Automatically find the folder containing the backend Dockerfile
-                            def backendDir = sh(script: "dirname \$(find . -name Dockerfile | grep -i backend | head -n 1)", returnStdout: true).trim()
-                            dir(backendDir) {
+                            def backendPath = sh(script: "find . -iname 'backend' -type d | head -n 1", returnStdout: true).trim()
+                            dir(backendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ."
                                 sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:${IMAGE_TAG}"
                             }
@@ -63,9 +60,8 @@ pipeline {
                 stage('Frontend') {
                     steps {
                         script {
-                            // Automatically find the folder containing the frontend Dockerfile
-                            def frontendDir = sh(script: "dirname \$(find . -name Dockerfile | grep -i frontend | head -n 1)", returnStdout: true).trim()
-                            dir(frontendDir) {
+                            def frontendPath = sh(script: "find . -iname 'frontend' -type d | head -n 1", returnStdout: true).trim()
+                            dir(frontendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ."
                                 sh "docker tag ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}"
                             }
@@ -105,7 +101,7 @@ services:
     image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
     container_name: backend
     ports:
-      - "8080:8080"
+      - "8081:8080"  # CHANGED: Host port 8081 mapped to Container port 8080
     restart: always
   frontend:
     image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
