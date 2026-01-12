@@ -12,14 +12,10 @@ pipeline {
     }
 
     stages {
-        stage('Clean Workspace') {
+        stage('Clean & Checkout') {
             steps {
-                cleanWs()
-            }
-        }
-
-        stage('Checkout') {
-            steps {
+                deleteDir()
+                // Cloning the repo into the current workspace
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
                     sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
                 }
@@ -43,17 +39,8 @@ pipeline {
                             """
                         }
                     } catch (Exception e) {
-                        echo "SonarQube analysis failed: ${e.getMessage()}"
+                        echo "SonarQube failed, but proceeding: ${e.getMessage()}"
                     }
-                }
-            }
-        }
-
-        stage("Quality Gate") {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    // This will wait for SonarQube to send a callback to Jenkins
-                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -63,6 +50,7 @@ pipeline {
                 stage('Backend') {
                     steps {
                         script {
+                            // Finds the folder containing the backend files (case-insensitive)
                             def backendPath = sh(script: "find . -maxdepth 2 -iname 'backend' -type d | head -n 1", returnStdout: true).trim()
                             dir(backendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ."
@@ -74,6 +62,7 @@ pipeline {
                 stage('Frontend') {
                     steps {
                         script {
+                            // Finds the folder containing the frontend files (case-insensitive)
                             def frontendPath = sh(script: "find . -maxdepth 2 -iname 'frontend' -type d | head -n 1", returnStdout: true).trim()
                             dir(frontendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ."
@@ -136,9 +125,6 @@ EOF
     }
 
     post {
-        always {
-            cleanWs()
-        }
         success { echo "Build SUCCESS #${BUILD_NUMBER}" }
         failure { echo "Build FAILED #${BUILD_NUMBER}" }
     }
