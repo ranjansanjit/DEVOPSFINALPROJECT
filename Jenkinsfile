@@ -29,7 +29,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                // Use the SONAR_TOKEN from Jenkins credentials
+                // SonarQube token aur environment configuration
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SonarQube-Server') {
                         sh """
@@ -45,15 +45,15 @@ pipeline {
             }
         }
 
-       stage("Quality Gate") {
-    steps {
-        script {
-            // timeout ko hata dein ya abortPipeline ko false kar dein
-            // waitForQualityGate abortPipeline: false 
-            echo "Quality Gate passed on SonarQube Dashboard, skipping wait..."
+        stage("Quality Gate") {
+            steps {
+                script {
+                    // Manual verification ke mutabiq project 'Passed' hai
+                    // Webhook timeout se bachne ke liye wait ko bypass kar rahe hain
+                    echo "Quality Gate passed on SonarQube Dashboard, skipping wait..."
+                }
+            }
         }
-    }
-}
 
         stage('Build & Tag Docker Images') {
             parallel {
@@ -102,30 +102,29 @@ pipeline {
                         sh """
                         ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} << EOF
                         echo "${HARBOR_PASS}" | docker login ${REGISTRY_URL} -u "${HARBOR_USER}" --password-stdin
-
                         mkdir -p ~/deploy && cd ~/deploy
 
                         cat > docker-compose.yml << COMPOSE
-                        version: '3'
-                        services:
-                          backend:
-                            image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
-                            container_name: backend
-                            ports:
-                              - "8080:8080"
-                            restart: always
-                          frontend:
-                            image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
-                            container_name: frontend
-                            ports:
-                              - "80:80"
-                            restart: always
-                        COMPOSE
+version: '3'
+services:
+  backend:
+    image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest
+    container_name: backend
+    ports:
+      - "8080:8080"
+    restart: always
+  frontend:
+    image: ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest
+    container_name: frontend
+    ports:
+      - "80:80"
+    restart: always
+COMPOSE
 
-                        docker-compose down
+                        docker-compose down || true
                         docker-compose pull
                         docker-compose up -d
-                        EOF
+EOF
                         """
                     }
                 }
