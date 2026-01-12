@@ -29,19 +29,18 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // Ensure 'sonarqube' matches the Name in Manage Jenkins -> System
                     withSonarQubeEnv('sonarqube') { 
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
                             sh '''
                             /opt/sonar-scanner/bin/sonar-scanner \
+                              -X \
                               -Dsonar.projectKey=contact_manager \
                               -Dsonar.projectName="Contact Manager" \
                               -Dsonar.sources=. \
                               -Dsonar.host.url=http://192.168.56.22:9000 \
                               -Dsonar.login=${SONAR_TOKEN} \
                               -Dsonar.scm.disabled=true \
-                              -Dsonar.ws.timeout=300 \
-                              -X
+                              -Dsonar.ws.timeout=300
                             '''
                         }
                     }
@@ -52,7 +51,6 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    // This waits for the report-task.txt created by the stage above
                     waitForQualityGate abortPipeline: true
                 }
             }
