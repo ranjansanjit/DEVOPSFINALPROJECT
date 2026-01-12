@@ -33,7 +33,6 @@ pipeline {
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
                             sh '''
                             /opt/sonar-scanner/bin/sonar-scanner \
-                              -X \
                               -Dsonar.projectKey=contact_manager \
                               -Dsonar.projectName="Contact Manager" \
                               -Dsonar.sources=. \
