@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Clean Workspace') {
             steps {
-                cleanWs() 
+                cleanWs()
             }
         }
 
@@ -29,7 +29,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // NOTE: 'sonarqube' must match the Name in Manage Jenkins > System
+                    // This name 'sonarqube' MUST match the name in Jenkins Global Settings
                     withSonarQubeEnv('sonarqube') { 
                         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
                             sh '''
@@ -135,7 +135,7 @@ EOF
 
     post {
         always {
-            cleanWs() 
+            cleanWs()
         }
         success { 
             echo "Build SUCCESS #${BUILD_NUMBER}" 
