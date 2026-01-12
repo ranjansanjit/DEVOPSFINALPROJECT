@@ -29,11 +29,11 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // Timeout set to 2 minutes so it doesn't hang forever
+                    // Time dherai nalagos bhanera timeout 2 min rakhiyeko chha
                     timeout(time: 2, unit: 'MINUTES') {
                         withSonarQubeEnv('sonarqube') { 
                             withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
-                                sh '''
+                                sh """
                                 /opt/sonar-scanner/bin/sonar-scanner \
                                   -Dsonar.projectKey=contact_manager \
                                   -Dsonar.projectName="Contact Manager" \
@@ -42,7 +42,7 @@ pipeline {
                                   -Dsonar.login=${SONAR_TOKEN} \
                                   -Dsonar.scm.disabled=true \
                                   -Dsonar.ws.timeout=60
-                                '''
+                                """
                             }
                         }
                     }
@@ -52,8 +52,7 @@ pipeline {
 
         stage("Quality Gate") {
             steps {
-                timeout(time: 3, unit: 'MINUTES') {
-                    // Waits for result from SonarQube
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -64,7 +63,7 @@ pipeline {
                 stage('Backend') {
                     steps {
                         script {
-                            // Path logic unchanged
+                            // Tapai ko path logic (Untouched)
                             def backendPath = sh(script: "find . -maxdepth 2 -iname 'backend' -type d | head -n 1", returnStdout: true).trim()
                             dir(backendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${BACKEND_IMAGE_NAME}:latest ."
@@ -76,7 +75,7 @@ pipeline {
                 stage('Frontend') {
                     steps {
                         script {
-                            // Path logic unchanged
+                            // Tapai ko path logic (Untouched)
                             def frontendPath = sh(script: "find . -maxdepth 2 -iname 'frontend' -type d | head -n 1", returnStdout: true).trim()
                             dir(frontendPath ?: '.') {
                                 sh "docker build -t ${REGISTRY_URL}/${HARBOR_PROJECT}/${FRONTEND_IMAGE_NAME}:latest ."
