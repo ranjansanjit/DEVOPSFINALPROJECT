@@ -30,15 +30,16 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
-                    // Path ko touch nahi kiya gaya hai
-                    // Login parameter ko end mein rakha hai for better reliability
+                    // Path is not touched as requested
+                    // Added -X for debugging and SCM disable to prevent report-task errors
                     sh """
-                    /opt/sonar-scanner/bin/sonar-scanner \
+                    /opt/sonar-scanner/bin/sonar-scanner -X \
                       -Dsonar.projectKey=contact_manager \
                       -Dsonar.projectName="Contact Manager" \
                       -Dsonar.sources=. \
                       -Dsonar.host.url=http://192.168.56.22:9000 \
-                      -Dsonar.login=${SONAR_TOKEN}
+                      -Dsonar.login=${SONAR_TOKEN} \
+                      -Dsonar.scm.disabled=true
                     """
                 }
             }
@@ -47,8 +48,6 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 script {
-                    // Dashboard status 'Passed' hai
-                    // Webhook error se bachne ke liye skip logic barkarar hai
                     echo "Quality Gate passed on SonarQube Dashboard, skipping wait..."
                 }
             }
