@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Clean Workspace') {
             steps {
-                cleanWs() // Explicitly cleans before start
+                cleanWs()
             }
         }
 
@@ -43,7 +43,7 @@ pipeline {
                             """
                         }
                     } catch (Exception e) {
-                        echo "SonarQube failed: ${e.getMessage()}"
+                        echo "SonarQube analysis failed: ${e.getMessage()}"
                     }
                 }
             }
@@ -51,8 +51,8 @@ pipeline {
 
         stage("Quality Gate") {
             steps {
-                // This ensures the pipeline follows the "Passed" status from SonarQube
                 timeout(time: 5, unit: 'MINUTES') {
+                    // This will wait for SonarQube to send a callback to Jenkins
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -137,7 +137,7 @@ EOF
 
     post {
         always {
-            cleanWs() // Cleans space at the very end
+            cleanWs()
         }
         success { echo "Build SUCCESS #${BUILD_NUMBER}" }
         failure { echo "Build FAILED #${BUILD_NUMBER}" }
