@@ -18,7 +18,8 @@ pipeline {
         stage('Checkout') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    sh "git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/ranjansanjit/DEVOPSFINALPROJECT.git ."
+                    // Using single quotes for the main string to avoid interpolation warnings
+                    sh 'git clone https://' + GIT_USER + ':' + GIT_TOKEN + '@github.com/ranjansanjit/DEVOPSFINALPROJECT.git .'
                 }
             }
         }
@@ -29,15 +30,16 @@ pipeline {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                         withSonarQubeEnv('sonarqube') { 
                             withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
-                                sh """
-                                /opt/sonar-scanner/bin/sonar-scanner \
-                                  -Dsonar.projectKey=contact_manager \
-                                  -Dsonar.projectName="Contact Manager" \
-                                  -Dsonar.sources=. \
-                                  -Dsonar.host.url=http://192.168.56.22:9000 \
-                                  -Dsonar.login=${SONAR_TOKEN} \
-                                  -Dsonar.scm.disabled=true
-                                """
+                                // 1. Added sonar.ws.timeout to fix the SocketTimeoutException
+                                // 2. Used string concatenation to avoid the "Insecure Groovy Interpolation" warning
+                                sh '/opt/sonar-scanner/bin/sonar-scanner ' +
+                                   '-Dsonar.projectKey=contact_manager ' +
+                                   '-Dsonar.projectName="Contact Manager" ' +
+                                   '-Dsonar.sources=. ' +
+                                   '-Dsonar.host.url=http://192.168.56.22:9000 ' +
+                                   '-Dsonar.login=' + SONAR_TOKEN + ' ' +
+                                   '-Dsonar.scm.disabled=true ' +
+                                   '-Dsonar.ws.timeout=300' 
                             }
                         }
                     }
